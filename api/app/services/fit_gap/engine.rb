@@ -50,10 +50,13 @@ module FitGap
         },
         portfolio: {
           skills: portfolio.portfolio_skills.includes(:assessor_override).map do |skill|
+            override = skill.assessor_override
             {
               skill_id:     skill.skill_id,
               skill_label:  skill.skill_label,
-              ai_level:     skill.ai_level
+              ai_level:     skill.ai_level,
+              effective_level: override ? override.override_level : skill.ai_level,
+              overridden:   override.present?
             }
           end
         }
