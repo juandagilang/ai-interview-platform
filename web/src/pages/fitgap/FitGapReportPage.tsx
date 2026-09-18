@@ -9,6 +9,7 @@ import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
+import { CONFIDENCE_LABELS } from "@/utils/constants";
 import type { FitGapReport, Portfolio } from "@/types";
 import type { FitGapResponse } from "@/services/portfolios";
 
@@ -196,10 +197,10 @@ export default function FitGapReportPage() {
       )}
 
       {/* Generating */}
-      {generating && (
+      {generating && !report && (
         <div className="border rounded-lg p-12 text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Generating fit/gap report...</p>
+          <p className="text-sm text-muted-foreground">Generating fit/gap report... this takes about 2 minutes.</p>
         </div>
       )}
 
@@ -271,7 +272,7 @@ export default function FitGapReportPage() {
                       <div key={s.id} className="text-sm flex items-center gap-2">
                         <span className="font-medium">{s.skill_label}</span>
                         <span className="text-muted-foreground">
-                          {s.ai_level} ({s.ai_confidence?.toLowerCase() === "low" ? "low confidence" : "confirmed"})
+                          {s.ai_level} ({(CONFIDENCE_LABELS[s.ai_confidence] ?? s.ai_confidence).toLowerCase()})
                         </span>
                         <span className="text-xs text-muted-foreground">— Not required for this role, may be additive.</span>
                       </div>
