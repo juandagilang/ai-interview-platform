@@ -26,12 +26,14 @@ export default function FitGapReportPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async () => {
     if (!portfolio) return;
     try {
       const res = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
       const data = res.data as FitGapResponse;
+      setError(null);
       setReport(data.report);
       setStale(!!data.meta?.stale);
       setGenerating(false);
@@ -42,7 +44,10 @@ export default function FitGapReportPage() {
           setGenerating(true);
         } catch {
           setGenerating(false);
+          setError("Could not start fit/gap generation. Please try again.");
         }
+      } else {
+        setError("Failed to load the fit/gap report. Please try again.");
       }
     }
   }, [portfolio, vacancyId]);
@@ -53,9 +58,13 @@ export default function FitGapReportPage() {
       .then(async (res) => {
         const data = res.data as any;
         if (data.portfolio) {
+          setError(null);
           setPortfolio(data.portfolio);
+        } else {
+          setError("No portfolio was found for this session.");
         }
       })
+      .catch(() => setError("We couldn't load this portfolio. Please try again."))
       .finally(() => setLoading(false));
   }, [sessionId]);
 
@@ -68,11 +77,14 @@ export default function FitGapReportPage() {
   const handleRegenerate = async () => {
     if (!portfolio) return;
     setRegenerating(true);
+    setError(null);
     try {
       await portfoliosApi.regenerateFitGap(portfolio.id, Number(vacancyId));
       setReport(null);
       setStale(false);
       setGenerating(true);
+    } catch {
+      setError("Could not regenerate the fit/gap report. Please try again.");
     } finally {
       setRegenerating(false);
     }
@@ -81,6 +93,7 @@ export default function FitGapReportPage() {
   const handleExport = async (format: "pdf" | "json") => {
     if (!portfolio) return;
     setExporting(format);
+    setError(null);
     try {
       const res = await portfoliosApi.exportPortfolio(portfolio.id, format, Number(vacancyId));
       const ext = format;
@@ -92,7 +105,9 @@ export default function FitGapReportPage() {
       a.href = url;
       a.download = `fitgap-${sessionId}-${vacancyId}.${ext}`;
       a.click();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      setError("Could not export the fit/gap report. Please try again.");
     } finally {
       setExporting(null);
     }
@@ -110,22 +125,21 @@ export default function FitGapReportPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Link
-              to={`/assessments/${id}/sessions/${sessionId}/portfolio`}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <h1 className="text-lg font-semibold">Fit/Gap Report</h1>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/assessments/${id}/sessions/${sessionId}/portfolio`}
+            aria-label="Back to portfolio"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <h1 className="text-lg font-semibold">Fit/Gap Report</h1>
         </div>
 
-        {portfolio && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerating || generating}>
+        {portfolio && portfolio.generation_status === "complete" && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerating || generating || !report}>
               {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
               Regenerate
             </Button>
@@ -144,6 +158,29 @@ export default function FitGapReportPage() {
           </div>
         )}
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* Portfolio still generating */}
+      {portfolio && portfolio.generation_status !== "complete" && (
+        <div className="border rounded-lg p-12 text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">
+            This portfolio is still being generated. Return to the portfolio page and try again shortly.
+          </p>
+          <Link
+            to={`/assessments/${id}/sessions/${sessionId}/portfolio`}
+            className="inline-flex text-sm text-primary hover:underline"
+          >
+            Back to portfolio
+          </Link>
+        </div>
+      )}
 
       {/* Generating */}
       {generating && (

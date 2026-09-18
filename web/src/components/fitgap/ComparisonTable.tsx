@@ -25,6 +25,14 @@ function ResultBadge({ comparison }: { comparison: SkillComparison }) {
 }
 
 export default function ComparisonTable({ comparisons }: ComparisonTableProps) {
+  if (comparisons.length === 0) {
+    return (
+      <div className="border rounded-lg p-10 text-center text-sm text-muted-foreground">
+        No skill comparisons are available for this vacancy.
+      </div>
+    );
+  }
+
   // Summary counts
   const matchCount = comparisons.filter((c) => c.result === "match").length;
   const gapCount = comparisons.filter((c) => c.result === "gap").length;
