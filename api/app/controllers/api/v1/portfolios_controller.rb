@@ -112,10 +112,14 @@ module Api
           return json_error("Portfolio is not ready (status: #{portfolio.generation_status})", :unprocessable_entity)
         end
 
-        # Return cached report if it exists and portfolio has no new overrides
+        # Return cached report if it exists and still matches the current inputs.
+        # If inputs changed (vacancy edit, portfolio/override changes), serve the
+        # existing report with stale:true and enqueue a background regeneration.
         existing = FitGapReport.find_by(portfolio_id: portfolio.id, vacancy_id: vacancy.id)
         if existing
-          return json_response(report: fit_gap_json(existing))
+          stale = existing.provenance_token != FitGap::Engine.fingerprint(portfolio, vacancy)
+          FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id) if stale
+          return json_response(report: fit_gap_json(existing), meta: { stale: stale })
         end
 
         FitGapGeneratorWorker.perform_async(portfolio.id, vacancy.id)
@@ -204,7 +208,8 @@ module Api
           skill_comparisons: report.skill_comparisons,
           culture_narrative: report.culture_narrative,
           overall_narrative: report.overall_narrative,
-          generated_at:      report.generated_at
+          generated_at:      report.generated_at,
+          provenance_token:  report.provenance_token
         }
       end
 
