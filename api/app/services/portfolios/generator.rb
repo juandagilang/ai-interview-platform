@@ -14,19 +14,27 @@ module Portfolios
     end
 
     # Returns the Portfolio record with skills populated.
+    # Idempotent: skips generation if the portfolio is already complete or being generated.
     def call
       portfolio = @session.portfolio || @session.create_portfolio!(
         candidate_id:      @session.candidate_id,
         generation_status: 'pending'
       )
 
-      portfolio.update!(generation_status: 'generating')
+      return portfolio if portfolio.complete? || portfolio.generating?
+
+      # Atomic claim so concurrent workers/sidekiq retries never double-generate.
+      claimed = Portfolio.where(id: portfolio.id, generation_status: %w[pending failed])
+                         .update_all(generation_status: 'generating')
+      return portfolio if claimed.zero?
 
       prompt   = build_prompt
       response = @gemini_client.generate_content(prompt, temperature: 0.2)
 
-      save_skills(portfolio, response)
-      portfolio.update!(generation_status: 'complete', generated_at: Time.current)
+      ActiveRecord::Base.transaction do
+        save_skills(portfolio, response)
+        portfolio.update!(generation_status: 'complete', generated_at: Time.current)
+      end
 
       Rails.logger.info("[N10] Portfolio generated for session #{@session.id}")
       portfolio
