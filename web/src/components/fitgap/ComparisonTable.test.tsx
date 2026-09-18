@@ -48,11 +48,11 @@ describe("ComparisonTable", () => {
     expect(within(rowFor("Docker")).getByText(/Exceeds \+1/)).toBeInTheDocument();
   });
 
-  it("shows the override marker when is_override is true and not when false", () => {
+  it("shows the override pencil icon when is_override is true and not when false", () => {
     render(<ComparisonTable comparisons={comparisons} />);
-    expect(within(rowFor("Docker")).getByText(/✏/)).toBeInTheDocument();
-    expect(within(rowFor("Ruby on Rails")).queryByText(/✏/)).not.toBeInTheDocument();
-    expect(within(rowFor("GraphQL")).queryByText(/✏/)).not.toBeInTheDocument();
+    expect(rowFor("Docker").querySelector(".lucide-pencil")).not.toBeNull();
+    expect(rowFor("Ruby on Rails").querySelector(".lucide-pencil")).toBeNull();
+    expect(rowFor("GraphQL").querySelector(".lucide-pencil")).toBeNull();
   });
 
   it("renders the summary with correct counts and skill pluralization", () => {
@@ -70,8 +70,14 @@ describe("ComparisonTable", () => {
     expect(screen.getByText(/Match: 1 skill/)).toBeInTheDocument();
   });
 
-  it('renders the "✏ = human override applied" legend exactly once', () => {
+  it('renders the "human override applied" legend exactly once', () => {
     render(<ComparisonTable comparisons={comparisons} />);
-    expect(screen.getAllByText(/✏\s*=\s*human override applied/)).toHaveLength(1);
+    expect(screen.getAllByText(/human override applied/)).toHaveLength(1);
+  });
+
+  it("shows an empty state when there are no comparisons", () => {
+    render(<ComparisonTable comparisons={[]} />);
+    expect(screen.getByText("No skill comparisons are available for this vacancy.")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 });
