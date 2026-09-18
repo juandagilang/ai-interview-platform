@@ -10,7 +10,7 @@ module Gemini
     GEMINI_WS_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent'
 
     INACTIVITY_TIMEOUT = 30 # reconnect if Gemini produces no meaningful response
-    GATE_OPEN_DELAY    = 0.8 # delay opening mic gate so frontend audio buffer drains and avoids echo loop
+    GATE_OPEN_DELAY    = ENV.fetch('GATE_OPEN_DELAY', 0.8).to_f # delay opening mic gate so frontend audio buffer drains and avoids echo loop
 
     # Silence pump: synthetic silent PCM frames sent during browser silence so Gemini's VAD detects end-of-speech.
     SILENCE_PUMP_DELAY    = 1
@@ -320,6 +320,14 @@ module Gemini
           },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              disabled: false,
+              endOfSpeechSensitivity: ENV.fetch('VAD_END_SENSITIVITY', 'END_SENSITIVITY_HIGH'),
+              silenceDurationMs: ENV.fetch('VAD_SILENCE_DURATION_MS', 450).to_i
+            },
+            activityHandling: 'NO_INTERRUPTION'
+          },
           contextWindowCompression: {
             slidingWindow: {}
           }
@@ -398,9 +406,11 @@ module Gemini
 
       if emitted_audio
         @gate_timer&.cancel
+        @gate_open_started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @gate_timer = EM::Timer.new(GATE_OPEN_DELAY) do
           unless @superseded
-            Rails.logger.info('[Gemini::LiveClient] Gate open — firing on_model_turn_complete')
+            elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @gate_open_started_at).round(3)
+            Rails.logger.info("[Gemini::LiveClient] Gate open — firing on_model_turn_complete (delay=#{elapsed}s)")
             @on_model_turn_complete&.call
           end
         end
