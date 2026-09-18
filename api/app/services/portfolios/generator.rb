@@ -27,6 +27,11 @@ module Portfolios
       claimed = Portfolio.where(id: portfolio.id, generation_status: %w[pending failed])
                          .update_all(generation_status: 'generating')
       return portfolio if claimed.zero?
+      # Reload after the claim so AR's in-memory baseline matches the DB. Otherwise
+      # `update!` in the rescue below compares the stale pre-claim value against the
+      # requested value: if they happen to match (e.g. failed -> failed) AR drops the
+      # column from the UPDATE and the portfolio is left stuck at "generating".
+      portfolio.reload
 
       prompt   = build_prompt
       response = @gemini_client.generate_content(prompt, temperature: 0.2)
