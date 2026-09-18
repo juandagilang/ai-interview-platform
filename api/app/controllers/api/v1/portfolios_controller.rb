@@ -137,7 +137,9 @@ module Api
           return json_error("Fit/gap report not found", :not_found)
         end
 
-        json_response(report: fit_gap_json(report))
+        stale = report.provenance_token != FitGap::Engine.fingerprint(portfolio, report.vacancy)
+        FitGapGeneratorWorker.perform_async(portfolio.id, report.vacancy_id) if stale
+        json_response(report: fit_gap_json(report), meta: { stale: stale })
       rescue ActiveRecord::RecordNotFound
         json_error("Portfolio not found", :not_found)
       end

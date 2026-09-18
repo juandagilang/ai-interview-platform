@@ -10,6 +10,7 @@ import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
 import type { FitGapReport, Portfolio } from "@/types";
+import type { FitGapResponse } from "@/services/portfolios";
 
 export default function FitGapReportPage() {
   const { id, sessionId, vacancyId } = useParams<{
@@ -19,6 +20,7 @@ export default function FitGapReportPage() {
   }>();
 
   const [report, setReport] = useState<FitGapReport | null>(null);
+  const [stale, setStale] = useState(false);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [generating, setGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,9 @@ export default function FitGapReportPage() {
     if (!portfolio) return;
     try {
       const res = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
-      setReport(res.data.report);
+      const data = res.data as FitGapResponse;
+      setReport(data.report);
+      setStale(!!data.meta?.stale);
       setGenerating(false);
     } catch (e: any) {
       if (e?.response?.status === 404) {
@@ -67,6 +71,7 @@ export default function FitGapReportPage() {
     try {
       await portfoliosApi.regenerateFitGap(portfolio.id, Number(vacancyId));
       setReport(null);
+      setStale(false);
       setGenerating(true);
     } finally {
       setRegenerating(false);
@@ -151,6 +156,13 @@ export default function FitGapReportPage() {
       {/* Report ready */}
       {report && (
         <>
+          {/* Stale notice */}
+          {stale && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-2.5">
+              This report is based on outdated vacancy or skill data. A refreshed version is being generated.
+            </div>
+          )}
+
           {/* Skill comparison */}
           <Card>
             <CardHeader className="pb-3">
@@ -164,16 +176,32 @@ export default function FitGapReportPage() {
           <Separator />
 
           {/* Culture & competency */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Culture &amp; Competency Fit</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-                {report.culture_narrative || report.overall_narrative}
-              </p>
-            </CardContent>
-          </Card>
+          {report.culture_narrative && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Culture &amp; Competency Fit</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                  {report.culture_narrative}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Overall recommendation */}
+          {report.overall_narrative && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Overall Recommendation</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                  {report.overall_narrative}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Discovered skills */}
           {portfolio && portfolio.skills.some((s) => s.is_discovered) && (
