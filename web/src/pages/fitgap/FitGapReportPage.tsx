@@ -26,17 +26,19 @@ export default function FitGapReportPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async () => {
     if (!portfolio) return;
+    setReportLoading(true);
     try {
       const res = await portfoliosApi.getFitGap(portfolio.id, Number(vacancyId));
       const data = res.data as FitGapResponse;
       setError(null);
       setReport(data.report);
       setStale(!!data.meta?.stale);
-      setGenerating(false);
+      setGenerating(!!data.meta?.stale);
     } catch (e: any) {
       if (e?.response?.status === 404) {
         try {
@@ -49,6 +51,8 @@ export default function FitGapReportPage() {
       } else {
         setError("Failed to load the fit/gap report. Please try again.");
       }
+    } finally {
+      setReportLoading(false);
     }
   }, [portfolio, vacancyId]);
 
@@ -163,6 +167,15 @@ export default function FitGapReportPage() {
       {error && (
         <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {/* Report loading */}
+      {reportLoading && !report && (
+        <div className="space-y-3">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
         </div>
       )}
 
