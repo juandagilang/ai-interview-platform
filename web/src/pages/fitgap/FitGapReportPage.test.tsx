@@ -21,15 +21,21 @@ vi.mock("lucide-react", () => {
   const Icon = () => null;
   return {
     ArrowLeft: Icon,
+    Check: Icon,
     Download: Icon,
     Loader2: Icon,
+    Minus: Icon,
+    Pencil: Icon,
     RefreshCw: Icon,
+    Star: Icon,
+    TriangleAlert: Icon,
     Zap: Icon,
   };
 });
 
 import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
+import { usePolling } from "@/hooks/usePolling";
 
 const portfolio = {
   id: 7,
@@ -73,6 +79,7 @@ const report = {
 };
 
 const staleBanner = "This report is based on outdated vacancy or skill data. A refreshed version is being generated.";
+const generatingText = /Generating fit\/gap report/;
 
 function renderPage() {
   return render(
@@ -87,8 +94,10 @@ function renderPage() {
   );
 }
 
-function mockPortfolio() {
-  vi.mocked(sessionsApi.getPortfolio).mockResolvedValue({ data: { portfolio } } as any);
+function mockPortfolio(status: string = "complete") {
+  vi.mocked(sessionsApi.getPortfolio).mockResolvedValue({
+    data: { portfolio: { ...portfolio, generation_status: status } },
+  } as any);
 }
 
 type ReportOverrides = {
@@ -104,6 +113,7 @@ function mockReport(overrides: ReportOverrides = {}, meta?: { stale?: boolean })
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(usePolling).mockReturnValue(undefined as any);
 });
 
 describe("FitGapReportPage", () => {
@@ -123,7 +133,18 @@ describe("FitGapReportPage", () => {
     resolvePortfolio!({ data: { portfolio } });
 
     await waitFor(() => expect(screen.getByText("Fit/Gap Report")).toBeInTheDocument());
-    expect(container.querySelector(".animate-pulse")).not.toBeInTheDocument();
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+  });
+
+  it("shows the report loading skeleton while getFitGap is pending after the portfolio loads", async () => {
+    mockPortfolio();
+    vi.mocked(portfoliosApi.getFitGap).mockReturnValue(new Promise(() => {}));
+
+    const { container } = renderPage();
+
+    await waitFor(() => expect(screen.getByText("Fit/Gap Report")).toBeInTheDocument());
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+    expect(screen.queryByText("Fit/Gap Report")).toBeInTheDocument();
   });
 
   it("renders the heading and both narrative cards when both narratives are present", async () => {
@@ -185,28 +206,96 @@ describe("FitGapReportPage", () => {
 
     renderPage();
 
-    await waitFor(() =>
-      expect(screen.getByText("Generating fit/gap report...")).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText(generatingText)).toBeInTheDocument());
     expect(portfoliosApi.triggerFitGap).toHaveBeenCalledWith(7, 5);
   });
 
-  it("calls regenerateFitGap, hides the stale banner, and returns to generating state", async () => {
+  it("shows an error banner when getFitGap fails with a non-404 error", async () => {
     mockPortfolio();
-    mockReport({}, { stale: true });
+    vi.mocked(portfoliosApi.getFitGap).mockRejectedValue({ response: { status: 500 } });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText("Failed to load the fit/gap report. Please try again.")).toBeInTheDocument()
+    );
+    expect(screen.queryByText(generatingText)).not.toBeInTheDocument();
+    expect(portfoliosApi.triggerFitGap).not.toHaveBeenCalled();
+  });
+
+  it("shows an error banner when getPortfolio fails", async () => {
+    vi.mocked(sessionsApi.getPortfolio).mockRejectedValue(new Error("network down"));
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText("We couldn't load this portfolio. Please try again.")).toBeInTheDocument()
+    );
+  });
+
+  it("shows a not-ready state when the portfolio is still generating", async () => {
+    mockPortfolio("processing");
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText(/This portfolio is still being generated/)).toBeInTheDocument()
+    );
+    expect(screen.getAllByRole("link", { name: "Back to portfolio" })).toHaveLength(2);
+    expect(screen.getByLabelText("Back to portfolio")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /regenerate/i })).not.toBeInTheDocument();
+  });
+
+  it("calls regenerateFitGap and returns to the generating state", async () => {
+    mockPortfolio();
+    mockReport();
     vi.mocked(portfoliosApi.regenerateFitGap).mockResolvedValue({ data: { status: "ok" } } as any);
 
     renderPage();
 
+    await waitFor(() => expect(screen.getByText("Skill Comparison")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /regenerate/i }));
+
+    await waitFor(() => expect(screen.getByText(generatingText)).toBeInTheDocument());
+    expect(portfoliosApi.regenerateFitGap).toHaveBeenCalledWith(7, 5);
+    expect(screen.queryByText(/Regenerate/i)).toBeInTheDocument();
+  });
+
+  it("disables the Regenerate button while the report is stale and auto-refreshing", async () => {
+    mockPortfolio();
+    mockReport({}, { stale: true });
+
+    renderPage();
+
     await waitFor(() => expect(screen.getByText(staleBanner)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /regenerate/i })).toBeDisabled();
+  });
+
+  it("shows an error banner when regenerateFitGap fails", async () => {
+    mockPortfolio();
+    mockReport();
+    vi.mocked(portfoliosApi.regenerateFitGap).mockRejectedValue(new Error("boom"));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText("Fit/Gap Report")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /regenerate/i }));
 
     await waitFor(() =>
-      expect(screen.getByText("Generating fit/gap report...")).toBeInTheDocument()
+      expect(screen.getByText("Could not regenerate the fit/gap report. Please try again.")).toBeInTheDocument()
     );
-    expect(portfoliosApi.regenerateFitGap).toHaveBeenCalledWith(7, 5);
-    expect(screen.queryByText(staleBanner)).not.toBeInTheDocument();
+  });
+
+  it("keeps polling while the report is stale", async () => {
+    mockPortfolio();
+    mockReport({}, { stale: true });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(staleBanner)).toBeInTheDocument());
+    expect(usePolling).toHaveBeenCalledWith(expect.any(Function), 5000, true);
   });
 
   it("renders the Discovered Skills card when the portfolio has an is_discovered skill", async () => {
@@ -241,5 +330,15 @@ describe("FitGapReportPage", () => {
 
     await waitFor(() => expect(screen.getByText("Skill Comparison")).toBeInTheDocument());
     expect(screen.getByText("Python")).toBeInTheDocument();
+  });
+
+  it("provides an accessible label on the back link", async () => {
+    mockPortfolio();
+    mockReport();
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText("Fit/Gap Report")).toBeInTheDocument());
+    expect(screen.getByLabelText("Back to portfolio")).toBeInTheDocument();
   });
 });
