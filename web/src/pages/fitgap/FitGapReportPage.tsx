@@ -286,6 +286,15 @@ export default function FitGapReportPage() {
           )}
         </>
       )}
+
+      {/* Report not ready yet (defensive fallback) */}
+      {portfolio && portfolio.generation_status === "complete" && !report && !reportLoading && !generating && !error && (
+        <div role="status" aria-live="polite" className="border rounded-lg p-12 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">
+            The fit/gap report isn't ready yet. Try again in a moment.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
