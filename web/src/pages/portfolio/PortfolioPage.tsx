@@ -65,9 +65,9 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     Promise.all([fetchPortfolio(), vacanciesApi.list(), sessionsApi.get(Number(sessionId))])
       .then(([, vRes, sRes]) => {
-        setError(null);
         setVacancies(vRes.data.vacancies);
         setCandidateName(sRes.data.session.candidate_name ?? null);
       })

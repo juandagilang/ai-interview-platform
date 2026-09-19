@@ -223,6 +223,38 @@ describe("FitGapReportPage", () => {
     expect(portfoliosApi.triggerFitGap).not.toHaveBeenCalled();
   });
 
+  it("retries the report fetch when Try again is clicked after an error", async () => {
+    mockPortfolio();
+    vi.mocked(portfoliosApi.getFitGap)
+      .mockRejectedValueOnce({ response: { status: 500 } })
+      .mockResolvedValueOnce({ data: { report, meta: {} } } as any);
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText("Failed to load the fit/gap report. Please try again.")).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+
+    await waitFor(() => expect(screen.getByText("Skill Comparison")).toBeInTheDocument());
+    expect(portfoliosApi.getFitGap).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a fallback message when a complete portfolio has no report", async () => {
+    mockPortfolio();
+    vi.mocked(portfoliosApi.getFitGap).mockResolvedValue({
+      data: { report: null, meta: {} },
+    } as any);
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText(/isn't ready yet/)).toBeInTheDocument()
+    );
+    expect(screen.queryByText("Skill Comparison")).not.toBeInTheDocument();
+  });
+
   it("shows an error banner when getPortfolio fails", async () => {
     vi.mocked(sessionsApi.getPortfolio).mockRejectedValue(new Error("network down"));
 
