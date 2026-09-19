@@ -84,6 +84,8 @@ export default function LiveMonitorPage() {
   const [sessionActive, setSessionActive] = useState(true);
   const lastTurnRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement>(null);
+  const pinnedToBottomRef = useRef(true);
 
   const { coverageMap, sessionEnded, sessionEndReason, isConnected } =
     useCoverageWebSocket(Number(sessionId));
@@ -141,6 +143,18 @@ export default function LiveMonitorPage() {
     pollTimerRef.current = setInterval(fetchNewTurns, 3000);
     return () => { if (pollTimerRef.current) clearInterval(pollTimerRef.current); };
   }, [sessionActive, loading, fetchNewTurns]);
+
+  // Keep the transcript pinned to the newest turn unless the user scrolled up
+  useEffect(() => {
+    const el = transcriptScrollRef.current;
+    if (el && pinnedToBottomRef.current) el.scrollTop = el.scrollHeight;
+  }, [transcript]);
+
+  const handleTranscriptScroll = () => {
+    const el = transcriptScrollRef.current;
+    if (!el) return;
+    pinnedToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+  };
 
   const handleEndSession = async () => {
     setEnding(true);
@@ -349,11 +363,15 @@ export default function LiveMonitorPage() {
         <div className="space-y-5">
           <div className="rounded-[14px] border border-border bg-card shadow-sm">
             <div className="px-5 pt-4">
-              <div className="font-display text-sm font-semibold text-foreground">
+              <div className="font-display text-sm font-semibold text-foreground mb-2">
                 Live transcript
               </div>
             </div>
-            <div className="space-y-2.5 px-5 pb-5 pt-3">
+            <div
+              ref={transcriptScrollRef}
+              onScroll={handleTranscriptScroll}
+              className="max-h-[46vh] space-y-2.5 overflow-y-auto px-5 pb-5 pt-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            >
               {transcript.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No transcript yet.</p>
               ) : (
