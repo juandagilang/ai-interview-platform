@@ -25,6 +25,21 @@ export default function PortfolioPage() {
   const [candidateName, setCandidateName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+
+  const handleRetryRegenerate = async () => {
+    setRetrying(true);
+    setError(null);
+    try {
+      await sessionsApi.regeneratePortfolio(Number(sessionId));
+      setGenerating(true);
+      setPortfolio(null);
+    } catch {
+      setError("Could not restart portfolio generation. Please try again.");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const fetchPortfolio = useCallback(async () => {
     try {
@@ -191,15 +206,9 @@ export default function PortfolioPage() {
       {!generating && portfolio?.generation_status === "failed" && (
         <div className="border border-destructive/40 rounded-lg p-6 text-center space-y-3">
           <p className="text-sm text-destructive">Portfolio generation failed.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await sessionsApi.regeneratePortfolio(Number(sessionId));
-              setGenerating(true);
-            }}
-          >
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+          <Button variant="outline" size="sm" onClick={handleRetryRegenerate} disabled={retrying}>
+            {retrying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+            Retry
           </Button>
         </div>
       )}
@@ -253,22 +262,30 @@ export default function PortfolioPage() {
           <Separator />
 
           {/* Fit/Gap */}
-          <div className="flex items-center gap-3">
-            <Select value={selectedVacancy} onValueChange={setSelectedVacancy}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Choose vacancy..." />
-              </SelectTrigger>
-              <SelectContent>
-                {vacancies.map((v) => (
-                  <SelectItem key={v.id} value={String(v.id)}>
-                    {v.role_title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleRunFitGap} disabled={!selectedVacancy}>
-              Run Fit/Gap Analysis →
-            </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            {vacancies.length > 0 ? (
+              <>
+                <Select value={selectedVacancy} onValueChange={setSelectedVacancy}>
+                  <SelectTrigger className="w-full sm:w-56">
+                    <SelectValue placeholder="Choose vacancy..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vacancies.map((v) => (
+                      <SelectItem key={v.id} value={String(v.id)}>
+                        {v.role_title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleRunFitGap} disabled={!selectedVacancy}>
+                  Run Fit/Gap Analysis →
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No vacancies yet — create one in the Vacancies page to run a fit/gap analysis.
+              </p>
+            )}
           </div>
         </>
       )}
