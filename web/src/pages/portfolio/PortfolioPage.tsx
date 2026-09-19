@@ -23,33 +23,42 @@ export default function PortfolioPage() {
   const [selectedVacancy, setSelectedVacancy] = useState<string>("");
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
   const [candidateName, setCandidateName] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const fetchPortfolio = useCallback(async () => {
-    const res = await sessionsApi.getPortfolio(Number(sessionId));
-    const data = res.data as any;
-    if (data.status === "generating" || data.portfolio?.generation_status === "generating" || data.portfolio?.generation_status === "pending") {
-      setGenerating(true);
-    } else if (data.portfolio) {
-      setPortfolio(data.portfolio);
-      setGenerating(false);
-      // Build overrides map
-      const overrideMap: Record<number, AssessorOverride> = {};
-      data.portfolio.overrides.forEach((o: AssessorOverride) => {
-        overrideMap[o.portfolio_skill_id] = o;
-      });
-      setOverrides(overrideMap);
+    try {
+      const res = await sessionsApi.getPortfolio(Number(sessionId));
+      const data = res.data as any;
+      if (data.status === "generating" || data.portfolio?.generation_status === "generating" || data.portfolio?.generation_status === "pending") {
+        setGenerating(true);
+      } else if (data.portfolio) {
+        setError(null);
+        setPortfolio(data.portfolio);
+        setGenerating(false);
+        // Build overrides map
+        const overrideMap: Record<number, AssessorOverride> = {};
+        data.portfolio.overrides.forEach((o: AssessorOverride) => {
+          overrideMap[o.portfolio_skill_id] = o;
+        });
+        setOverrides(overrideMap);
+      }
+    } catch {
+      setError("We couldn't load this portfolio. Please try again.");
     }
   }, [sessionId]);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([fetchPortfolio(), vacanciesApi.list(), sessionsApi.get(Number(sessionId))])
       .then(([, vRes, sRes]) => {
+        setError(null);
         setVacancies(vRes.data.vacancies);
         setCandidateName(sRes.data.session.candidate_name ?? null);
       })
-      .catch(() => {})
+      .catch(() => setError("We couldn't load this portfolio. Please try again."))
       .finally(() => setLoading(false));
-  }, [fetchPortfolio, sessionId]);
+  }, [fetchPortfolio, sessionId, retryKey]);
 
   // Poll while generating
   usePolling(fetchPortfolio, 5000, generating);
@@ -89,6 +98,8 @@ export default function PortfolioPage() {
         a.click();
         URL.revokeObjectURL(url);
       }
+    } catch {
+      setError("Could not export the portfolio. Please try again.");
     } finally {
       setExporting(null);
     }
@@ -152,6 +163,16 @@ export default function PortfolioPage() {
           )}
         </div>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={() => setRetryKey((k) => k + 1)}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+          </Button>
+        </div>
+      )}
 
       {/* Generating state */}
       {generating && (

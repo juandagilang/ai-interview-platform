@@ -166,8 +166,11 @@ export default function FitGapReportPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive">
-          {error}
+        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={fetchReport}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
+          </Button>
         </div>
       )}
 
