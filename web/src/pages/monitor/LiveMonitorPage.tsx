@@ -143,10 +143,10 @@ export default function LiveMonitorPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Link to={`/assessments/${id}/invite`} className="text-muted-foreground hover:text-foreground">
+            <Link to={`/assessments/${id}/invite`} aria-label="Back to assessment" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
             </Link>
             <h1 className="text-lg font-semibold">Live Monitor</h1>
@@ -170,7 +170,7 @@ export default function LiveMonitorPage() {
 
       {/* Session ended banner */}
       {sessionEnded && (
-        <div className="flex items-center gap-2 text-sm bg-muted/50 border rounded-lg px-4 py-3">
+        <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm bg-muted/50 border rounded-lg px-4 py-3">
           <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
           <div>
             <span className="font-medium">Session ended</span>

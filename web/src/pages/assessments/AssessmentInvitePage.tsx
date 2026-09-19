@@ -132,10 +132,16 @@ export default function AssessmentInvitePage() {
   const [newSessionCopied, setNewSessionCopied] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [candidateNameInput, setCandidateNameInput] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
-    const res = await assessmentsApi.getSessions(Number(id));
-    setSessions(res.data.sessions);
+    try {
+      const res = await assessmentsApi.getSessions(Number(id));
+      setSessions(res.data.sessions);
+    } catch {
+      // Transient poll failure: keep the last known sessions.
+    }
   }, [id]);
 
   useEffect(() => {
@@ -143,9 +149,10 @@ export default function AssessmentInvitePage() {
       assessmentsApi.get(Number(id)),
       assessmentsApi.getSessions(Number(id)),
     ]).then(([aRes, sRes]) => {
+      setLoadError(null);
       setAssessment(aRes.data.assessment);
       setSessions(sRes.data.sessions);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => setLoadError("We couldn't load this assessment. Please try again.")).finally(() => setLoading(false));
   }, [id]);
 
   // Poll while any session is live or pending
@@ -163,13 +170,16 @@ export default function AssessmentInvitePage() {
 
   const handleInviteCandidate = async () => {
     setCreatingSession(true);
-    setShowInviteDialog(false);
-    setNewSession(null);
+    setInviteError(null);
     try {
       const res = await assessmentsApi.createSession(Number(id), candidateNameInput.trim() || undefined);
       const created = res.data.session;
       setNewSession(created);
       setSessions((prev) => [created, ...prev]);
+      setShowInviteDialog(false);
+      setCandidateNameInput("");
+    } catch {
+      setInviteError("Could not create the invite link. Please try again.");
     } finally {
       setCreatingSession(false);
     }
@@ -203,7 +213,7 @@ export default function AssessmentInvitePage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <Link to="/assessments" className="text-muted-foreground hover:text-foreground">
+          <Link to="/assessments" aria-label="Back to assessments" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
@@ -226,12 +236,23 @@ export default function AssessmentInvitePage() {
         </div>
       </div>
 
+      {loadError && (
+        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive">
+          {loadError}
+        </div>
+      )}
+
       {/* Invite candidate dialog */}
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Invite Candidate</DialogTitle>
           </DialogHeader>
+          {inviteError && (
+            <div className="border border-destructive/40 rounded-lg p-3 text-sm text-destructive">
+              {inviteError}
+            </div>
+          )}
           <div className="space-y-2 py-2">
             <Label htmlFor="candidate-name">Candidate name</Label>
             <Input
@@ -289,7 +310,7 @@ export default function AssessmentInvitePage() {
           </h2>
         </div>
 
-        {sessions.length === 0 ? (
+        {!loadError && sessions.length === 0 ? (
           <div className="border rounded-lg p-10 text-center space-y-3">
             <UserRound className="h-8 w-8 text-muted-foreground mx-auto" />
             <div>
