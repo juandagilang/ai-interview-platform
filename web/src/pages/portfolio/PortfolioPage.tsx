@@ -9,6 +9,7 @@ import Banner from "@/components/design/Banner";
 import { sessionsApi } from "@/services/sessions";
 import { vacanciesApi } from "@/services/vacancies";
 import { portfoliosApi } from "@/services/portfolios";
+import { extractExportError } from "@/services/api";
 import { usePolling } from "@/hooks/usePolling";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText, AlertTriangle } from "lucide-react";
 import type { Portfolio, AssessorOverride, Vacancy } from "@/types";
@@ -114,8 +115,9 @@ export default function PortfolioPage() {
         a.click();
         URL.revokeObjectURL(url);
       }
-    } catch {
-      setError("Could not export the portfolio. Please try again.");
+    } catch (e) {
+      const message = (await extractExportError(e)) ?? "Could not export the portfolio. Please try again.";
+      setError(message);
     } finally {
       setExporting(null);
     }

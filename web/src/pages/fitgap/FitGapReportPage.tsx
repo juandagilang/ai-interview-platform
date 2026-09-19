@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ComparisonTable from "@/components/fitgap/ComparisonTable";
 import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
+import { extractExportError } from "@/services/api";
 import { usePolling } from "@/hooks/usePolling";
 import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
 import { CONFIDENCE_LABELS } from "@/utils/constants";
@@ -111,8 +112,9 @@ export default function FitGapReportPage() {
       a.download = `fitgap-${sessionId}-${vacancyId}.${ext}`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    } catch {
-      setError("Could not export the fit/gap report. Please try again.");
+    } catch (e) {
+      const message = (await extractExportError(e)) ?? "Could not export the fit/gap report. Please try again.";
+      setError(message);
     } finally {
       setExporting(null);
     }
