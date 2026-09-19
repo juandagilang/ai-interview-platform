@@ -59,6 +59,17 @@ FactoryBot.define do
     expected_level { 3 }
   end
 
+  factory :skill_taxonomy do
+    skill_id    { "sk-test-001" }
+    skill_label { "Ruby on Rails" }
+    category    { "engineering" }
+    l1_anchor   { "Can follow instructions" }
+    l2_anchor   { "Works independently on routine tasks" }
+    l3_anchor   { "Handles complex ambiguous scope" }
+    l4_anchor   { "Defines standards and systems" }
+    l5_anchor   { "Org-level authority" }
+  end
+
   factory :portfolio do
     association       :session
     candidate_id      { 1 }
