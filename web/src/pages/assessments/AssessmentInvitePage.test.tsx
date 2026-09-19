@@ -62,6 +62,18 @@ describe("AssessmentInvitePage", () => {
     expect(screen.queryByText("No candidates yet")).not.toBeInTheDocument();
   });
 
+  it("renders the 404 page when the assessment is not found", async () => {
+    vi.mocked(assessmentsApi.get).mockRejectedValue({ response: { status: 404 } });
+    vi.mocked(assessmentsApi.getSessions).mockRejectedValue({ response: { status: 404 } });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText("The page you're looking for doesn't exist.")).toBeInTheDocument()
+    );
+    expect(screen.queryByText("Invite Candidate")).not.toBeInTheDocument();
+  });
+
   it("shows the 'No candidates yet' empty state when the load succeeds with zero sessions", async () => {
     mockSuccessLoad([]);
 

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import BadgeDot, { type BadgeTone } from "@/components/design/BadgeDot";
 import LevelChip from "@/components/design/LevelChip";
 import Banner from "@/components/design/Banner";
+import NotFoundPage from "@/pages/NotFoundPage";
 import { assessmentsApi } from "@/services/assessments";
 import {
   ArrowLeft,
@@ -126,6 +127,7 @@ export default function AssessmentInvitePage() {
   const [candidateNameInput, setCandidateNameInput] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -144,7 +146,13 @@ export default function AssessmentInvitePage() {
       setLoadError(null);
       setAssessment(aRes.data.assessment);
       setSessions(sRes.data.sessions);
-    }).catch(() => setLoadError("We couldn't load this assessment. Please try again.")).finally(() => setLoading(false));
+    }).catch((err) => {
+      if ((err as { response?: { status?: number } })?.response?.status === 404) {
+        setNotFound(true);
+        return;
+      }
+      setLoadError("We couldn't load this assessment. Please try again.");
+    }).finally(() => setLoading(false));
   }, [id]);
 
   // Poll while any session is live or pending
@@ -189,6 +197,10 @@ export default function AssessmentInvitePage() {
     setNewSessionCopied(true);
     setTimeout(() => setNewSessionCopied(false), 2000);
   };
+
+  if (notFound) {
+    return <NotFoundPage />;
+  }
 
   if (loading) {
     return (
