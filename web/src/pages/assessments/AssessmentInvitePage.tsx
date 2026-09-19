@@ -213,7 +213,7 @@ export default function AssessmentInvitePage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <Link to="/assessments" className="text-muted-foreground hover:text-foreground">
+          <Link to="/assessments" aria-label="Back to assessments" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>

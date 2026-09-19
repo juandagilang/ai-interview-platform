@@ -166,7 +166,7 @@ export default function FitGapReportPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive flex items-center justify-between gap-3">
+        <div role="status" aria-live="polite" className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive flex items-center justify-between gap-3">
           <span>{error}</span>
           <Button variant="outline" size="sm" onClick={fetchReport}>
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
@@ -201,7 +201,7 @@ export default function FitGapReportPage() {
 
       {/* Generating */}
       {generating && !report && (
-        <div className="border rounded-lg p-12 text-center space-y-3">
+        <div role="status" aria-live="polite" className="border rounded-lg p-12 text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <p className="text-sm text-muted-foreground">Generating fit/gap report... this takes about 2 minutes.</p>
         </div>
@@ -212,7 +212,7 @@ export default function FitGapReportPage() {
         <>
           {/* Stale notice */}
           {stale && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-2.5">
+            <div role="status" aria-live="polite" className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-2.5">
               This report is based on outdated vacancy or skill data. A refreshed version is being generated.
             </div>
           )}

@@ -133,9 +133,9 @@ export default function PortfolioPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Link to={`/assessments/${id}/invite`} className="text-muted-foreground hover:text-foreground">
+          <Link to={`/assessments/${id}/invite`} aria-label="Back to assessment" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
@@ -181,7 +181,7 @@ export default function PortfolioPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive flex items-center justify-between gap-3">
+        <div role="status" aria-live="polite" className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive flex items-center justify-between gap-3">
           <span>{error}</span>
           <Button variant="outline" size="sm" onClick={() => setRetryKey((k) => k + 1)}>
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try again
@@ -191,7 +191,7 @@ export default function PortfolioPage() {
 
       {/* Generating state */}
       {generating && (
-        <div className="border rounded-lg p-12 text-center space-y-3">
+        <div role="status" aria-live="polite" className="border rounded-lg p-12 text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <div>
             <p className="font-medium">Generating portfolio...</p>
@@ -204,7 +204,7 @@ export default function PortfolioPage() {
 
       {/* Failed state */}
       {!generating && portfolio?.generation_status === "failed" && (
-        <div className="border border-destructive/40 rounded-lg p-6 text-center space-y-3">
+        <div role="status" aria-live="polite" className="border border-destructive/40 rounded-lg p-6 text-center space-y-3">
           <p className="text-sm text-destructive">Portfolio generation failed.</p>
           <Button variant="outline" size="sm" onClick={handleRetryRegenerate} disabled={retrying}>
             {retrying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
